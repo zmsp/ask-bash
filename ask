@@ -1,0 +1,80 @@
+#!/bin/bash
+
+# Function to display help information
+function echo_help() {
+    echo "Usage: script.sh [options]"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help          Display this help message"
+    echo "  export VERBOSE=false       Disable verbose mode"
+    echo "  export OPEN_AI_KEY=false     Specify the OpenAI API key"
+    echo ""
+    echo "Description:"
+    echo "  This script generates a Bash command using the OpenAI API."
+    echo "  The generated command can be used to accomplish a specific task."
+    echo ""
+    echo "  By default, the script will prompt for confirmation before running the command."
+    echo "  You can use the '-v' or '--verbose' option to enable verbose mode, which will print additional debug information."
+    echo "  The API key can be specified by setting the 'OPEN_AI_KEY' environment variable."
+    echo ""
+    echo "Examples:"
+    echo "./ask untar export.zip file on /tmp directory"
+    echo "./ask  delete all files on root directory recursively" 
+}
+
+# Check if help option is specified
+if [[ $1 == "-h" || $1 == "--help" ]]; then
+    echo_help
+    exit 0
+fi
+
+# Function to print verbose messages
+function echo_v() {
+    local arg="$1"
+    if [[ $VERBOSE != "FALSE" ]]; then
+        echo "Verbose turned on"
+        echo "$arg"
+    fi
+}
+
+# Define your OpenAI API credentials
+API_KEY="$OPEN_AI_KEY"
+
+# Define the endpoint URL for the OpenAI API
+API_ENDPOINT="https://api.openai.com/v1/engines/text-davinci-003/completions"
+
+# Define the prompt for the conversation with the model
+PROMPT="Please generate a Bash command to accomplish the following task: $@ \n"
+
+# Function to send a request to the OpenAI API
+function send_request() {
+    local input="$1"
+    curl -s -X POST \
+        -H "Authorization: Bearer $API_KEY" \
+        -H "Content-Type: application/json" \
+        -d "{\"prompt\": \"$PROMPT\", \"max_tokens\": 50}" \
+        "$API_ENDPOINT"
+}
+
+# Send a request to the OpenAI API and store the response
+json=$(send_request)
+
+# Extract the command from the JSON response
+pattern='.*"text":"\\n([^"]+)"'
+if [[ $json =~ $pattern ]]; then
+  extracted_value="${BASH_REMATCH[1]}"
+fi
+
+# Print the extracted command
+echo_v "Command:"
+echo "$extracted_value"
+
+# Ask the user if they want to run the command
+read -p "Run the command? (y/n): " choice
+if [[ $choice != "y" ]]; then
+  echo "Nope..."
+  exit 0
+fi
+
+echo "running command $extracted_value"
+eval $extracted_value

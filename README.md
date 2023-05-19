@@ -1,12 +1,18 @@
 # ask-AI Bash Script
 
- This script generates amazing Bash commands using the power of the OpenAI API. It's a tool that helps you with 
+Simple bash script that helps you with bash commands using the Power of AI
+
+![Alt Text](https://i.imgur.com/rqw3my6.gif)
 
 ## Features
 
 - Generates Bash commands tailored to your specific task
 - Makes use of the OpenAI API for intelligent command generation
 - Easy to use and execute with simple command-line interface
+
+## Requirements
+* Bash terminal
+* Open AI api key from  https://platform.openai.com/account/api-keys
 
 ## Installation
 

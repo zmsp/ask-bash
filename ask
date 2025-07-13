@@ -1,80 +1,105 @@
 #!/bin/bash
 
-# Function to display help information
-function echo_help() {
-    echo "Usage: script.sh [options]"
-    echo ""
-    echo "Options:"
-    echo "  -h, --help          Display this help message"
-    echo "  export VERBOSE=false       Disable verbose mode"
-    echo "  export OPEN_AI_KEY=false     Specify the OpenAI API key"
-    echo ""
-    echo "Description:"
-    echo "  This script generates a Bash command using the OpenAI API."
-    echo "  The generated command can be used to accomplish a specific task."
-    echo ""
-    echo "  By default, the script will prompt for confirmation before running the command."
-    echo "  You can use the '-v' or '--verbose' option to enable verbose mode, which will print additional debug information."
-    echo "  The API key can be specified by setting the 'OPEN_AI_KEY' environment variable."
-    echo ""
-    echo "Examples:"
-    echo "./ask untar export.zip file on /tmp directory"
-    echo "./ask  delete all files on root directory recursively" 
+# CLI tool to ask OpenAI for a bash command suggestion
+
+set -euo pipefail
+
+KEY_FILE="$HOME/.openai_api_key"
+MODEL="gpt-4.1-nano"
+MAX_TOKENS=100
+
+show_help() {
+cat <<EOF
+Usage: $(basename "$0") [description of the bash task]
+
+This script uses OpenAI's API to generate a bash command for the task you describe.
+It prints the suggested command and optionally runs it if you confirm.
+
+Options:
+  -h, --help         Show this help message and exit
+
+Environment Variables:
+  OPENAI_API_KEY     Required. Your OpenAI API key. You can set it like this:
+                       export OPENAI_API_KEY=your_api_key_here
+                     If not set, the script will prompt you once and save it to ~/.openai_api_key.
+
+  VERBOSE=true       Optional. Enables debug output such as the prompt and full response.
+
+Examples:
+  $(basename "$0") "list all files in /tmp modified in the last 24 hours"
+  $(basename "$0") "restart nginx service if it's not running"
+
+EOF
 }
 
-# Check if help option is specified
-if [[ $1 == "-h" || $1 == "--help" ]]; then
-    echo_help
+# Show help if no args or help flag passed
+if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
+    show_help
     exit 0
 fi
 
-# Function to print verbose messages
-function echo_v() {
-    local arg="$1"
-    if [[ $VERBOSE != "FALSE" ]]; then
-        echo "Verbose turned on"
-        echo "$arg"
+# Load API key from file if not set
+if [[ -z "${OPENAI_API_KEY:-}" && -f "$KEY_FILE" ]]; then
+    OPENAI_API_KEY=$(<"$KEY_FILE")
+fi
+
+# Prompt user for API key if still not set
+if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+    echo "⚠️  OPENAI_API_KEY not found."
+    read -s -p "Paste your OpenAI API key: " OPENAI_API_KEY
+    echo
+    if [[ -n "$OPENAI_API_KEY" ]]; then
+        echo "$OPENAI_API_KEY" > "$KEY_FILE"
+        chmod 600 "$KEY_FILE"
+        echo "✅ API key saved to $KEY_FILE"
+    else
+        echo "❌ API key not provided. Exiting."
+        exit 1
     fi
-}
+fi
+        
+prompt="Only output the bash command to: $*"
+[[ "${VERBOSE:-}" == "true" ]] && echo "Prompt: $prompt"
 
-# Define your OpenAI API credentials
-API_KEY="$OPEN_AI_KEY"
+# Create JSON payload
+json_payload=$(jq -n \
+  --arg model "$MODEL" \
+  --arg prompt "$prompt" \
+  --argjson max_tokens "$MAX_TOKENS" \
+  '{
+    model: $model,
+    messages: [{role: "user", content: $prompt}],
+    temperature: 0,
+    max_tokens: $max_tokens
+  }'
+)
 
-# Define the endpoint URL for the OpenAI API
-API_ENDPOINT="https://api.openai.com/v1/engines/text-davinci-003/completions"
+# Send request to OpenAI
+response=$(curl -sS https://api.openai.com/v1/chat/completions \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$json_payload"
+)
 
-# Define the prompt for the conversation with the model
-PROMPT="Please generate a Bash command to accomplish the following task: $@ \n"
+[[ "${VERBOSE:-}" == "true" ]] && echo "response: $response"
+# Parse the command safely
+command=$(echo "$response" | jq -r '.choices[0].message.content // empty')
 
-# Function to send a request to the OpenAI API
-function send_request() {
-    local input="$1"
-    curl -s -X POST \
-        -H "Authorization: Bearer $API_KEY" \
-        -H "Content-Type: application/json" \
-        -d "{\"prompt\": \"$PROMPT\", \"max_tokens\": 50}" \
-        "$API_ENDPOINT"
-}
-
-# Send a request to the OpenAI API and store the response
-json=$(send_request)
-
-# Extract the command from the JSON response
-pattern='.*"text":"\\n([^"]+)"'
-if [[ $json =~ $pattern ]]; then
-  extracted_value="${BASH_REMATCH[1]}"
+if [[ -z "$command" ]]; then
+    echo "❌ Failed to get a valid response. Full output:"
+    echo "$response"
+    exit 1
 fi
 
-# Print the extracted command
-echo_v "Command:"
-echo "$extracted_value"
+# Clean up Markdown formatting
+command=$(echo "$command" | sed '/^```/d')
 
-# Ask the user if they want to run the command
-read -p "Run the command? (y/n): " choice
-if [[ $choice != "y" ]]; then
-  echo "Nope..."
-  exit 0
+echo -e "\nSuggested command:\n$command"
+
+read -p "Run this command? (y/n): " confirm
+if [[ "$confirm" =~ ^[Yy]$ ]]; then
+    echo "Running... $command"
+    eval "$command"
+else
+    echo "Cancelled."
 fi
-
-echo "running command $extracted_value"
-eval $extracted_value

@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# CLI tool to ask OpenAI for a bash command suggestion
-
 set -euo pipefail
 
 KEY_FILE="$HOME/.openai_api_key"
@@ -23,7 +21,7 @@ Environment Variables:
                        export OPENAI_API_KEY=your_api_key_here
                      If not set, the script will prompt you once and save it to ~/.openai_api_key.
 
-  VERBOSE=true       Optional. Enables debug output such as the prompt and full response.
+  VERBOSE=true       Optional. Enables interactive debug output.
 
 Examples:
   $(basename "$0") "list all files in /tmp modified in the last 24 hours"
@@ -32,18 +30,15 @@ Examples:
 EOF
 }
 
-# Show help if no args or help flag passed
 if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
     show_help
     exit 0
 fi
 
-# Load API key from file if not set
 if [[ -z "${OPENAI_API_KEY:-}" && -f "$KEY_FILE" ]]; then
     OPENAI_API_KEY=$(<"$KEY_FILE")
 fi
 
-# Prompt user for API key if still not set
 if [[ -z "${OPENAI_API_KEY:-}" ]]; then
     echo "⚠️  OPENAI_API_KEY not found."
     read -s -p "Paste your OpenAI API key: " OPENAI_API_KEY
@@ -57,11 +52,17 @@ if [[ -z "${OPENAI_API_KEY:-}" ]]; then
         exit 1
     fi
 fi
-        
-prompt="Only output the bash command to: $*"
-[[ "${VERBOSE:-}" == "true" ]] && echo "Prompt: $prompt"
 
-# Create JSON payload
+prompt="Only output the bash command to: $*"
+
+if [[ "${VERBOSE:-}" == "true" ]]; then
+    echo "[Verbose] Constructed prompt:"
+    echo "  $prompt"
+    read -p "Show full prompt JSON payload? (y/n): " show_payload
+else
+    show_payload="n"
+fi
+
 json_payload=$(jq -n \
   --arg model "$MODEL" \
   --arg prompt "$prompt" \
@@ -74,25 +75,33 @@ json_payload=$(jq -n \
   }'
 )
 
-# Send request to OpenAI
+if [[ "$show_payload" =~ ^[Yy]$ ]]; then
+    echo "[Verbose] JSON payload sent to API:"
+    echo "$json_payload"
+fi
+
 response=$(curl -sS https://api.openai.com/v1/chat/completions \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H "Content-Type: application/json" \
   -d "$json_payload"
 )
 
-[[ "${VERBOSE:-}" == "true" ]] && echo "response: $response"
-# Parse the command safely
-command=$(echo "$response" | jq -r '.choices[0].message.content // empty')
+if [[ "${VERBOSE:-}" == "true" ]]; then
+    echo "[Verbose] Raw API response preview:"
+    echo "$response" | head -n 10
+    read -p "Show full API response? (y/n): " show_full_response
+    if [[ "$show_full_response" =~ ^[Yy]$ ]]; then
+        echo "$response"
+    fi
+fi
+
+command=$(echo "$response" | jq -r '.choices[0].message.content // empty' | sed '/^```/d')
 
 if [[ -z "$command" ]]; then
     echo "❌ Failed to get a valid response. Full output:"
     echo "$response"
     exit 1
 fi
-
-# Clean up Markdown formatting
-command=$(echo "$command" | sed '/^```/d')
 
 echo -e "\nSuggested command:\n$command"
 

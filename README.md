@@ -1,115 +1,64 @@
-# ask-AI — Bash Script Powered by OpenAI
+# ask-AI
 
-A simple CLI tool that helps you generate and run Bash commands using OpenAI's GPT models.
+Generate and run Bash commands using OpenAI’s GPT models.
+
 
 ![Demo](https://i.imgur.com/rqw3my6.gif)
 
----
 
-## Features
 
-* Quickly get a Bash command for any task description
-* Uses OpenAI’s Chat API (`gpt-4.1-nano`)
-* Minimal dependencies — just Bash, `curl`
-* Automatically saves your API key securely
-* Optional interactive execution mode
-
----
 
 ## Requirements
 
 * Bash
-* [`curl`](https://curl.se/)
-* [`jq`](https://stedolan.github.io/jq/)
-* OpenAI API key (get one at [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys))
+* curl
+* OpenAI API key
 
----
 
-## Installation
 
-1. Download the script:
+## Install
 
-   ```bash
-   curl -O https://raw.githubusercontent.com/zmsp/ask-bash/main/ask
-   ```
+```bash
+curl -O https://raw.githubusercontent.com/zmsp/ask-bash/main/ask
+chmod +x ask
+mv ask ~/.local/bin/
+export PATH="$PATH:$HOME/.local/bin"
+ask --help
+```
 
-2. Make it executable:
 
-   ```bash
-   chmod +x ask
-   ```
-
-3. Move it into your PATH (optional but recommended):
-
-   ```bash
-   mv ask ~/.local/bin/
-   export PATH="$PATH:$HOME/.local/bin"
-   ```
-
-4. Set your OpenAI API key (once):
-   You can either:
-
-   * Export it in your terminal:
-
-     ```bash
-     export OPENAI_API_KEY="sk-REPLACE_ME"
-     ```
-   * Or run the script once and it will prompt you to paste the key and save it to `~/.openai_api_key` securely.
-
----
 
 ## Usage
 
 ```bash
-ask "list all .log files in /var and delete them"
+ask "your task description"
 ```
 
-Sample output:
+Set your API key by exporting `OPENAI_API_KEY` or let the script prompt and save it.
 
-```
-Suggested command:
-find /var -name '*.log' -delete
 
-Run this command? (y/n): n
-Cancelled.
-```
 
-### Options
+## Options
 
 ```bash
 ask --help
 ```
 
-### Environment Variables
 
-| Variable         | Purpose                                      |
-| ---------------- | -------------------------------------------- |
-| `OPENAI_API_KEY` | Your OpenAI API key. Required.               |
-| `VERBOSE=true`   | Optional. Enables debug output and raw JSON. |
+## Env Variables
 
----
+* `OPENAI_API_KEY` — your OpenAI key (required). You can either:
 
-## Examples
+  * Export it in your current shell:
 
-```bash
-ask "untar a .tar.gz file"
-ask "find files over 100MB in /home"
-ask "restart nginx only if it's not running"
-```
+    ```bash
+    export OPENAI_API_KEY="your_api_key_here"
+    ```
+  * Or run the script once and it will prompt you to paste the key and save it securely to `~/.openai_api_key`.
 
----
-
-## Contributing
-
-Contributions welcome.
-If you find a bug or want to suggest an improvement, please open an issue or submit a pull request.
-
----
+* `VERBOSE=true` — enable debug output (optional)
 
 ## License
 
-MIT License © Zobair
+MIT © Zobair
 
----
-
-Let me know if you want it even more minimal or focused on usage tips.

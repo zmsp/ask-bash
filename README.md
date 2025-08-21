@@ -19,23 +19,25 @@ Generate and run Bash commands using OpenAI’s GPT models.
 ## Install
 
 ```bash
-curl -O https://raw.githubusercontent.com/zmsp/ask-bash/main/ask
-chmod +x ask
-mv ask ~/.local/bin/
-export PATH="$PATH:$HOME/.local/bin"
+curl -fsSL https://raw.githubusercontent.com/zmsp/ask-bash/main/ask -o /tmp/ask
+chmod +x /tmp/ask
+sudo mv /tmp/ask /usr/local/bin/
 ask --help
 ```
 
 
 
 ## Usage
-
+Generate a bash command for a task and optionally run it:
 ```bash
-ask "your task description"
+ask your task description
 ```
 
+Send a direct question or prompt to the API (skips “run this command” behavior with `-` flag):
+```bash
+ask -q Explain the ls command options
+```
 Set your API key by exporting `OPENAI_API_KEY` or let the script prompt and save it.
-
 
 
 ## Options

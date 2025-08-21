@@ -2,7 +2,7 @@
 set -euo pipefail
 
 KEY_FILE="$HOME/.openai_api_key"
-MODEL="gpt-5-nano"
+MODEL="gpt-4.1-nano"
 MAX_TOKENS=100
 
 # Display usage information

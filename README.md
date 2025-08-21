@@ -10,9 +10,10 @@ Generate and run Bash commands using OpenAI’s GPT models.
 
 ## Requirements
 
-* Bash
-* curl
-* OpenAI API key
+* Bash (any linux based system)
+* [curl](https://everything.curl.dev/install/)
+* [jq](https://jqlang.org/download/)
+* [OpenAI API key](https://platform.openai.com/settings/organization/api-keys)
 
 
 
